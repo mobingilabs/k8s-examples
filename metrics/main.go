@@ -2,10 +2,8 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/client-go/kubernetes/scheme"
 
@@ -13,7 +11,10 @@ import (
 
 	restclient "k8s.io/client-go/rest"
 
-	"n1ce/k8s/pkg/kubernetes"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/metrics/pkg/apis/metrics"
+
+	"github.com/mobingilabs/ouchan/services/ocean-alibaba/kubernetes"
 )
 
 func main() {
@@ -22,7 +23,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
 	client := newRESTClient(confByte)
 	getMetric(client)
 }
@@ -75,13 +75,17 @@ func newRESTClient(kubeconf []byte) restclient.Interface {
 }
 
 func getMetric(client restclient.Interface) {
-	fmt.Println(client.Get().Suffix("nodes").URL().String())
+	results := metrics.NodeMetricsList{}
+	err := client.Get().Suffix("nodes").Do().Into(&results)
+	if err != nil {
+		panic(err)
+	}
 }
 
 func setConfigDefaults(config *restclient.Config) {
-	gv := v1.SchemeGroupVersion
+	gv := schema.GroupVersion{Group: "", Version: "v1alpha1"}
 	config.GroupVersion = &gv
-	config.APIPath = "/apis"
+	config.APIPath = "/apis/metrics"
 	config.NegotiatedSerializer = serializer.DirectCodecFactory{CodecFactory: scheme.Codecs}
 	config.UserAgent = restclient.DefaultKubernetesUserAgent()
 }
